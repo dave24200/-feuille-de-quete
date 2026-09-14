@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Feuille de quête">
+<title>Feuille de quête</title>
+<style>
+:root{--bg:#17120f;--panel:#241b16;--panel2:#30231b;--gold:#d9a441;--text:#f4ead8;--muted:#b9aa95;--red:#8e302b}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#3b281b 0,#17120f 45%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:28px 18px;text-align:center;border-bottom:1px solid #5a4127} h1{margin:0;color:var(--gold);font-family:Georgia,serif;font-size:clamp(1.7rem,5vw,2.7rem)} header p{margin:.4rem 0 0;color:var(--muted)}
+main{max-width:1000px;margin:auto;padding:18px;display:grid;gap:16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid #5a4127;border-radius:14px;padding:16px;box-shadow:0 10px 30px #0005}
+h2{font:700 1.15rem Georgia,serif;color:var(--gold);margin:0 0 12px}
+label{display:block;color:var(--muted);font-size:.82rem;margin:9px 0 5px}input,textarea,button{font:inherit}input,textarea{width:100%;background:#120e0b;color:var(--text);border:1px solid #5b4633;border-radius:8px;padding:9px}textarea{min-height:100px;resize:vertical}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.stat{background:#17110d;border-radius:9px;padding:7px;text-align:center;font-size:.88rem}.stat b{display:block;font-size:1.35rem;color:var(--gold);padding:4px}.stat input{margin-top:3px;text-align:center;font-size:1.1rem;font-weight:700;color:var(--gold);min-height:40px;padding:5px}
+button{border:0;border-radius:8px;padding:7px 10px;background:#5b3a20;color:#fff;cursor:pointer}button:hover{background:#7b4c25}.danger{background:#722722}.wide{width:100%}
+.quest{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #49372a}.quest:last-child{border:0}.quest input{width:auto}
+.inventory{display:grid;grid-template-columns:1fr 80px;gap:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+footer{text-align:center;color:#806f5b;font-size:.78rem;padding:8px 18px 25px}
+
+/* Optimisation iPad / tactile */
+html{background:var(--bg);-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{min-height:100vh;min-height:100dvh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior:none}
+button,input,textarea{font-size:16px} /* évite le zoom automatique des champs sur iPad */
+button{min-height:46px;min-width:46px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-appearance:none;appearance:none}
+input,textarea{min-height:46px}
+textarea{min-height:120px}
+main{width:min(1180px,100%);padding:20px max(20px,env(safe-area-inset-left)) 24px max(20px,env(safe-area-inset-right))}
+.card{padding:20px}
+.stats{gap:12px}.stat button{min-width:48px}
+.toolbar button{padding:10px 16px}
+@media (min-width:768px){
+  main{grid-template-columns:1fr 1fr;align-items:start}
+  main>.card:first-child,main>.toolbar{grid-column:1/-1}
+  main>.grid{grid-column:1/-1}
+  .card{border-radius:16px}
+}
+@media (orientation:landscape) and (min-width:768px){
+  header{padding:20px}
+  main{padding-top:16px}
+}
+@media (max-width:767px){
+  main{padding:14px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+.characteristics-card{padding:8px}.characteristics-card h2{margin-bottom:5px;font-size:.95rem}.characteristics-card .stats{gap:4px}.characteristics-card .stat{padding:4px;font-size:.72rem;border-radius:7px}.characteristics-card .stat input{min-height:34px;height:34px;margin-top:2px;padding:2px;font-size:1rem}.characteristics-card .stat b{font-size:1.1rem;padding:2px}
+.monster-card{background:#17110d;border:1px solid #5b4633;border-radius:12px;padding:14px;margin-bottom:12px}.monster-card strong{font-family:Georgia,serif}.monster-card input{margin-bottom:4px}
+
+/* Animation du lancer de dés */
+.dice-result {
+  perspective: 600px;
+}
+.die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 58px;
+  border: 1px solid #5b4633;
+  border-radius: 12px;
+  background: linear-gradient(145deg,#3a2a20,#17110d);
+  box-shadow: inset 0 1px 0 #ffffff12, 0 6px 14px #0006;
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--gold);
+  transform-style: preserve-3d;
+}
+.die.rolling {
+  animation: diceRoll .65s cubic-bezier(.25,.8,.25,1);
+}
+@keyframes diceRoll {
+  0%   { transform: rotateX(0deg) rotateY(0deg) scale(1); }
+  20%  { transform: rotateX(120deg) rotateY(70deg) scale(1.08); }
+  45%  { transform: rotateX(250deg) rotateY(180deg) scale(.96); }
+  70%  { transform: rotateX(390deg) rotateY(275deg) scale(1.06); }
+  100% { transform: rotateX(360deg) rotateY(360deg) scale(1); }
+}
+.dice-total-pop {
+  animation: totalPop .35s ease-out;
+}
+@keyframes totalPop {
+  0% { transform: scale(.7); opacity:.35; }
+  70% { transform: scale(1.18); opacity:1; }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .die.rolling,.dice-total-pop { animation:none!important; }
+}
+
+
+/* Verrouillage local par code */
+#lockScreen{
+  position:fixed; inset:0; z-index:99999;
+  display:flex; align-items:center; justify-content:center;
+  padding:24px; background:rgba(23,18,15,.98);
+}
+#lockScreen[hidden]{display:none}
+.lock-card{
+  width:min(420px,100%); padding:28px 22px; text-align:center;
+  background:linear-gradient(145deg,var(--panel2),var(--panel));
+  border:1px solid #5a4127; border-radius:18px;
+  box-shadow:0 18px 50px #0009;
+}
+.lock-card h2{font-size:1.5rem;margin-bottom:8px}
+.lock-card p{color:var(--muted);margin:0 0 18px}
+#lockPin{
+  width:100%; text-align:center; letter-spacing:.35em;
+  font-size:1.4rem; min-height:52px;
+}
+#lockError{min-height:1.4em;color:#e58d86;margin:10px 0 0}
+.lock-hint{font-size:.78rem;color:var(--muted);margin-top:14px}
+
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#17120f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Feuille de quête">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+</head>
+<body>
+
+<div id="lockScreen" hidden>
+  <div class="lock-card">
+    <h2>🔒 Feuille de quête</h2>
+    <p id="lockMessage">Entrez votre code pour accéder à votre fiche.</p>
+    <input id="lockPin" type="password" inputmode="numeric" pattern="[0-9]*"
+           maxlength="8" autocomplete="off" placeholder="Code" aria-label="Code de verrouillage">
+    <button id="unlockBtn" type="button" class="wide" style="margin-top:12px">Déverrouiller</button>
+    <button id="resetPinBtn" type="button" class="wide" style="margin-top:8px;background:transparent;color:var(--muted)">Changer / réinitialiser le code</button>
+    <div id="lockError" role="alert"></div>
+    <div class="lock-hint">Le code est stocké localement sur cet appareil.</div>
+  </div>
+</div>
+
+<header>
+<h1>⚔ Feuille de quête</h1>
+<p>Le Sorcier de la Montagne de Feu</p>
+</header>
+<main>
+<div class="card">
+<h2>Héros</h2>
+<div class="grid">
+<div><label>Nom du héros</label><input id="name" placeholder="Votre nom"></div>
+<div><label>Notes / objectif actuel</label><input id="goal" placeholder="Ex. atteindre la montagne…"></div>
+</div>
+</div>
+
+<div class="grid">
+<div class="card characteristics-card"><h2>Caractéristiques</h2>
+<div class="stats">
+<div class="stat">Habileté<input id="skill" type="number" min="0" value="7" inputmode="numeric"></div>
+<div class="stat">Endurance<input id="stamina" type="number" min="0" value="14" inputmode="numeric"></div>
+<div class="stat">Chance<input id="luck" type="number" min="0" value="7" inputmode="numeric"></div>
+</div></div>
+
+<div class="card"><h2>État</h2>
+<label>Or</label><input id="gold" type="number" min="0" value="0">
+<label>Repas</label><input id="food" type="number" min="0" value="0">
+<label>Équipement</label><textarea id="equipment" placeholder="Armes, armure, bouclier, objets équipés…"></textarea>
+<label>Objets / clés</label><textarea id="items" placeholder="Listez vos objets…"></textarea>
+</div>
+</div>
+
+<div class="grid">
+<div class="card"><h2>Progression</h2>
+<div class="quest"><span>Introduction terminée</span><input data-save="q1" type="checkbox"></div>
+<div class="quest"><span>Entrée de la montagne trouvée</span><input data-save="q2" type="checkbox"></div>
+<div class="quest"><span>Indice important découvert</span><input data-save="q3" type="checkbox"></div>
+<div class="quest"><span>Rencontre majeure</span><input data-save="q4" type="checkbox"></div>
+<div class="quest"><span>Accès aux profondeurs</span><input data-save="q5" type="checkbox"></div>
+<div class="quest"><span>Affrontement final</span><input data-save="q6" type="checkbox"></div>
+</div>
+
+<div class="card"><h2>Journal d'aventure</h2>
+<textarea id="journal" placeholder="Numéros de paragraphes, décisions, indices, rencontres…"></textarea>
+<label>Paragraphes / repères</label>
+<input id="refs" placeholder="Ex. 14 → 27 → 83">
+</div>
+</div>
+
+<div class="card">
+<h2>🎲 Lancer de dés</h2>
+<div class="stats">
+  <div class="stat">Dé 1<b id="die1" class="die">—</b></div>
+  <div class="stat">Dé 2<b id="die2" class="die">—</b></div>
+  <div class="stat">Total<b id="diceTotal" class="dice-total">—</b></div>
+</div>
+<button type="button" class="wide" style="margin-top:12px" id="rollDiceBtn" aria-label="Lancer deux dés">🎲 Lancer 2 dés</button>
+</div>
+
+
+<div class="card">
+<h2>👹 Rencontres avec les monstres</h2>
+<div id="monsters"></div>
+<button type="button" class="wide" style="margin-top:12px" id="addMonsterBtn">＋ Ajouter une rencontre</button>
+</div>
+
+<div class="card">
+<h2>Compteurs personnalisés</h2>
+<div class="grid">
+<div><label>Compteur 1</label><input id="c1n" placeholder="Nom"><input id="c1v" type="number" value="0"></div>
+<div><label>Compteur 2</label><input id="c2n" placeholder="Nom"><input id="c2v" type="number" value="0"></div>
+</div>
+</div>
+
+<div class="toolbar">
+<button onclick="save()">💾 Sauvegarder</button>
+<button onclick="resetAll()" class="danger">↺ Réinitialiser</button>
+</div>
+</main>
+<footer>Feuille de suivi non officielle. Elle ne reproduit pas le contenu du livre.<br>Sur iPad : Safari → Partager → <strong>Sur l’écran d’accueil</strong> pour l’utiliser comme une application.</footer>
+<script>
+const ids=['name','goal','gold','food','equipment','items','journal','refs','c1n','c1v','c2n','c2v','skill','stamina','luck'];
+
+
+function rollDice(){
+  const die1 = document.getElementById('die1');
+  const die2 = document.getElementById('die2');
+  const total = document.getElementById('diceTotal');
+  const button = document.getElementById('rollDiceBtn');
+
+  if (!die1 || !die2 || !total || !button) return;
+  if (button.dataset.rolling === '1') return;
+
+  button.dataset.rolling = '1';
+  button.textContent = '🎲 Lancer…';
+
+  die1.classList.remove('rolling');
+  die2.classList.remove('rolling');
+  total.classList.remove('dice-total-pop');
+  void die1.offsetWidth;
+
+  die1.classList.add('rolling');
+  die2.classList.add('rolling');
+
+  let count = 0;
+  const timer = setInterval(() => {
+    die1.textContent = String(Math.floor(Math.random() * 6) + 1);
+    die2.textContent = String(Math.floor(Math.random() * 6) + 1);
+    count++;
+
+    if (count >= 6) {
+      clearInterval(timer);
+
+      const d1 = Math.floor(Math.random() * 6) + 1;
+      const d2 = Math.floor(Math.random() * 6) + 1;
+
+      die1.textContent = String(d1);
+      die2.textContent = String(d2);
+      total.textContent = String(d1 + d2);
+
+      total.classList.remove('dice-total-pop');
+      void total.offsetWidth;
+      total.classList.add('dice-total-pop');
+
+      button.dataset.rolling = '0';
+      button.textContent = '🎲 Lancer 2 dés';
+    }
+  }, 100);
+}
+
+
+let monsterCount=0;
+function addMonster(data={}){
+  monsterCount++;
+  const card=document.createElement('div');
+  card.className='monster-card';
+  card.dataset.id=monsterCount;
+  card.innerHTML=`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <strong style="color:var(--gold)">Monstre ${monsterCount}</strong>
+      <button type="button" class="danger" style="margin-left:auto" aria-label="Supprimer cette rencontre">✕</button>
+    </div>
+    <label>Nom du monstre</label>
+    <input class="monster-name" type="text" placeholder="Ex. Gobelin" value="${escapeHtml(data.name || '')}">
+    <div class="grid" style="margin-top:6px">
+      <div><label>Habileté</label><input class="monster-skill" type="number" min="0" value="${Number(data.skill || 0)}" inputmode="numeric"></div>
+      <div><label>Endurance</label><input class="monster-stamina" type="number" min="0" value="${Number(data.stamina || 0)}" inputmode="numeric"></div>
+    </div>
+    <label>État</label>
+    <input class="monster-status" type="text" placeholder="Vivant, vaincu, fuite…" value="${escapeHtml(data.status || '')}">
+  `;
+  card.querySelector('.danger').addEventListener('click',()=>{
+    card.remove();
+    renumberMonsters();
+    saveMonsters();
+  });
+  card.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('input',saveMonsters);
+    el.addEventListener('change',saveMonsters);
+  });
+  document.getElementById('monsters').appendChild(card);
+}
+function renumberMonsters(){
+  [...document.querySelectorAll('#monsters .monster-card')].forEach((card,i)=>{
+    card.dataset.id=i+1;
+    card.querySelector('strong').textContent='Monstre '+(i+1);
+  });
+  monsterCount=document.querySelectorAll('#monsters .monster-card').length;
+}
+function escapeHtml(x){
+  return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+function saveMonsters(){
+  const arr=[...document.querySelectorAll('#monsters .monster-card')].map(card=>({
+    name:card.querySelector('.monster-name').value,
+    skill:card.querySelector('.monster-skill').value,
+    stamina:card.querySelector('.monster-stamina').value,
+    status:card.querySelector('.monster-status').value
+  }));
+  localStorage.setItem('monsters',JSON.stringify(arr));
+}
+function loadMonsters(){
+  const arr=JSON.parse(localStorage.getItem('monsters')||'[]');
+  arr.forEach(addMonster);
+}
+
+function save(){
+  const data={};
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) data[id]=el.value;
+  });
+  document.querySelectorAll('[data-save]').forEach(x=>data[x.dataset.save]=x.checked);
+  localStorage.setItem('questSheet',JSON.stringify(data));
+  saveMonsters();
+}
+function load(){
+  const d=JSON.parse(localStorage.getItem('questSheet')||'null');
+  if(!d)return;
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && d[id]!==undefined) el.value=d[id];
+  });
+  document.querySelectorAll('[data-save]').forEach(x=>x.checked=!!d[x.dataset.save]);
+}
+
+// Initialisation de l'application
+document.addEventListener('DOMContentLoaded', () => {
+  load();
+  loadMonsters();
+
+  // Liaison directe des boutons après chargement du DOM.
+  document.getElementById('rollDiceBtn').onclick = rollDice;
+  document.getElementById('addMonsterBtn').onclick = () => addMonster();
+});
+
+
+/* Verrouillage local par code */
+const LOCK_KEY = 'questSheetPin';
+const LOCKED_KEY = 'questSheetLocked';
+
+async function hashPin(pin){
+  const data = new TextEncoder().encode(pin);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function lockApp(){
+  const screen = document.getElementById('lockScreen');
+  screen.hidden = false;
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('lockPin').focus(), 50);
+}
+
+function unlockApp(){
+  document.getElementById('lockScreen').hidden = true;
+  document.body.style.overflow = '';
+  document.getElementById('lockPin').value = '';
+  document.getElementById('lockError').textContent = '';
+}
+
+async function setupOrUnlock(){
+  const stored = localStorage.getItem(LOCK_KEY);
+  const pin = document.getElementById('lockPin').value.trim();
+  const error = document.getElementById('lockError');
+
+  if (!stored){
+    if (!/^\d{4,8}$/.test(pin)){
+      error.textContent = 'Choisissez un code de 4 à 8 chiffres.';
+      return;
+    }
+    localStorage.setItem(LOCK_KEY, await hashPin(pin));
+    localStorage.setItem(LOCKED_KEY, '0');
+    unlockApp();
+    return;
+  }
+
+  if (await hashPin(pin) === stored){
+    localStorage.setItem(LOCKED_KEY, '0');
+    unlockApp();
+  } else {
+    error.textContent = 'Code incorrect.';
+    document.getElementById('lockPin').select();
+  }
+}
+
+async function changePin(){
+  const stored = localStorage.getItem(LOCK_KEY);
+  if (!stored){
+    document.getElementById('lockMessage').textContent = 'Choisissez votre premier code.';
+    document.getElementById('lockPin').value = '';
+    document.getElementById('lockError').textContent = '';
+    return;
+  }
+
+  const oldPin = prompt('Entrez le code actuel :');
+  if (oldPin === null) return;
+  if (await hashPin(oldPin.trim()) !== stored){
+    alert('Code actuel incorrect.');
+    return;
+  }
+
+  const newPin = prompt('Nouveau code (4 à 8 chiffres) :');
+  if (newPin === null) return;
+  if (!/^\d{4,8}$/.test(newPin.trim())){
+    alert('Le nouveau code doit contenir 4 à 8 chiffres.');
+    return;
+  }
+
+  localStorage.setItem(LOCK_KEY, await hashPin(newPin.trim()));
+  localStorage.setItem(LOCKED_KEY, '0');
+  alert('Code modifié.');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const stored = localStorage.getItem(LOCK_KEY);
+  const message = document.getElementById('lockMessage');
+
+  if (!stored){
+    message.textContent = 'Choisissez un code de 4 à 8 chiffres pour protéger votre fiche.';
+    document.getElementById('unlockBtn').textContent = 'Créer le code';
+  } else {
+    lockApp();
+  }
+
+  document.getElementById('unlockBtn').addEventListener('click', setupOrUnlock);
+  document.getElementById('lockPin').addEventListener('keydown', e => {
+    if (e.key === 'Enter') setupOrUnlock();
+  });
+  document.getElementById('resetPinBtn').addEventListener('click', changePin);
+});
+
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body></html>
